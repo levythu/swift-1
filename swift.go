@@ -149,6 +149,9 @@ var (
 	Forbidden           = newError(403, "Operation forbidden")
 	TooLargeObject      = newError(413, "Too Large Object")
 
+
+	AlreadyExist      	= newError(202, "Already Exist")
+
 	// Mappings for authentication errors
 	authErrorMap = errorMap{
 		400: BadRequest,
@@ -1022,6 +1025,34 @@ func (c *Connection) ContainerCreate(container string, h Headers) error {
 		Headers:    h,
 	})
 	return err
+}
+
+// ContainerCreateX creates a container.
+//
+// If you don't want to add Headers just pass in nil
+//
+// If it already exists an AlreadyExist error will be returned, which is the only point
+// different from Connection.ContainerCreate()
+func (c *Connection) ContainerCreateX(container string, h Headers) error {
+	resp, _, err := c.storage(RequestOpts{
+		Container:  container,
+		Operation:  "PUT",
+		ErrorMap:   ContainerErrorMap,
+		NoResponse: true,
+		Headers:    h,
+	})
+	if err!=nil {
+		return err
+	}
+	if resp.StatusCode==201 {
+		// Created
+		return nil
+	}
+	if resp.StatusCode==202 {
+		// Accepted
+		return AlreadyExist
+	}
+	return nil
 }
 
 // ContainerDelete deletes a container.
